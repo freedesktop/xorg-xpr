@@ -153,6 +153,22 @@ GrayRec gray2x2 = {sizeof(grayscale2x2)/sizeof(long), 2, 2, grayscale2x2};
 GrayRec gray3x3 = {sizeof(grayscale3x3)/sizeof(long), 3, 3, grayscale3x3};
 GrayRec gray4x4 = {sizeof(grayscale4x4)/sizeof(long), 4, 4, grayscale4x4};
 
+/* mapping tables to map a byte in to the hex representation of its
+ * bit-reversal
+ */
+const
+char hex1[]="084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f\
+084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f\
+084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f\
+084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f";
+
+const
+char hex2[]="000000000000000088888888888888884444444444444444cccccccccccccccc\
+2222222222222222aaaaaaaaaaaaaaaa6666666666666666eeeeeeeeeeeeeeee\
+111111111111111199999999999999995555555555555555dddddddddddddddd\
+3333333333333333bbbbbbbbbbbbbbbb7777777777777777ffffffffffffffff";
+
+
 /* Local prototypes */
 static void usage(void);
 static
@@ -208,7 +224,7 @@ void build_sixmap(
   int hpad,
   XWDFileHeader *win,
   const char *data);
-static void build_output_filename(const char *name, enum device device, const char *oname);
+static void build_output_filename(const char *name, enum device device, char *oname);
 static
 void ln03_setup(
   int iw,
@@ -1116,7 +1132,7 @@ void build_sixmap(
 }
 
 static
-void build_output_filename(const char *name, enum device device, const char *oname)
+void build_output_filename(const char *name, enum device device, char *oname)
 {
     while (*name && *name != '.') *oname++ = *name++;
     switch (device) {
@@ -1911,7 +1927,6 @@ int ps_putbuf(
   int compact)			/* if non-zero, do compaction (see below) */
 {
     register int ffcount = 0;
-    extern char hex1[],hex2[];
     static char hex[] = "0123456789abcdef";
 #define PUT(c) { putchar(c); if (++ocount>=LINELEN) \
 	{ putchar('\n'); ocount=0; }}
@@ -2038,19 +2053,3 @@ void fullread (
 	data += bytes_read;
 	}
 }
-
-/* mapping tables to map a byte in to the hex representation of its
- * bit-reversal
- */
-const
-char hex1[]="084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f\
-084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f\
-084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f\
-084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f";
-
-const
-char hex2[]="000000000000000088888888888888884444444444444444cccccccccccccccc\
-2222222222222222aaaaaaaaaaaaaaaa6666666666666666eeeeeeeeeeeeeeee\
-111111111111111199999999999999995555555555555555dddddddddddddddd\
-3333333333333333bbbbbbbbbbbbbbbb7777777777777777ffffffffffffffff";
-

@@ -138,7 +138,7 @@ typedef struct {
 
 /* Local prototypes */
 static void set_image_limits (  int scale, int density,  enum orientation orient,  Area print_area);
-static void set_header_trailer_limits (const char *header, const char *trailer, long printwidth);
+static void set_header_trailer_limits (char *header, char *trailer, long printwidth);
 static void set_print_locations (  int scale, int density,  int top, int left,  const char *header, const char *trailer,  enum orientation orient,  int position_on_page);
 static int scale_raster (
   int density,
@@ -299,7 +299,7 @@ void set_image_limits (
 
 
 static
-void set_header_trailer_limits (const char *header, const char *trailer, long printwidth)
+void set_header_trailer_limits (char *header, char *trailer, long printwidth)
 {
   /* Determine the number of header and trailer characters
    * that will fit into the available printing area.
