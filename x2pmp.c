@@ -15,31 +15,36 @@
 #include "pmp.h"
 #include "xpr.h"
 
-#define max_(a, b) (a) > (b) ? (a) : (b)
-#define min_(a, b) (a) < (b) ? (a) : (b)
-#define abs_(a) (a) < 0 ? -(a) : (a)
+#define max_(a, b) ((a) > (b) ? (a) : (b))
+#define min_(a, b) ((a) < (b) ? (a) : (b))
+#define abs_(a)    ((a) < 0 ? -(a) : (a))
 
-static void leave();
-static bits_set();
-static unsigned char *magnification_table();
 
-/* global variables set by main() and used by x2pmp() */
-extern char *progname;
-extern int debug;
+/* Local prototypes */
+static unsigned char *magnification_table(int scale);
+static int bits_set(int n);
+static void leave(const char *s);
+static void p_move_abs(FILE *p, int x, int y);
+static void p_save_cursor(FILE *p, int reg);
+static void p_restore_cursor(FILE *p, int reg);
+static void p_set_orientation(FILE *p, enum orientation orient);
+static void p_bitmap(
+  FILE *p,
+  unsigned int h, int w,
+  unsigned long buflen,
+  unsigned char *buf);
 
 static plane = 0;
 #define FONT_HEIGHT 40
 #define FONT_HEIGHT_PIXELS (FONT_HEIGHT*75/PPI)
 #define FONT_WIDTH 24
 
-void x2pmp(in, out, scale, p_width, p_length, x_pos, y_pos,
-		  head, foot, orient, invert)
-FILE *in, *out;
-int scale;
-int p_width, p_length, x_pos, y_pos; /* in pels (units of PPI) */
-char *head, *foot;
-enum orientation orient;
-int invert;
+void x2pmp(FILE *in, FILE *out,
+  int scale,
+  int p_width, int p_length, int x_pos, int y_pos, /* in pels (units of PPI) */
+  char *head, char *foot,
+  enum orientation orient,
+  int invert)
 {
     unsigned char *buffer, *win_name;
     unsigned int win_name_size, width, height, ncolors;
@@ -49,11 +54,12 @@ int invert;
     XWDFileHeader header;
 
     /* Read header from file */
-    if (fread((char *)&header, sizeof(header), 1, in) != 1)
+    if (fread((char *)&header, sizeof(header), 1, in) != 1) {
       if (feof(in)) 
 	return;
       else
 	leave("fread");
+    }
     if (*(char *) &swaptest)
       _swaplong((char *) &header, sizeof(header));
 
@@ -237,8 +243,8 @@ int invert;
     free((char *) buffer);
 }
 
-static unsigned char *magnification_table(scale)
-int scale;
+static
+unsigned char *magnification_table(int scale)
 {
     unsigned char *tbl;
     int c;
@@ -270,8 +276,8 @@ int scale;
 
 /* returns 2^n-1, i.e. a number with bits n-1 through 0 set.
  * (zero for n == 0) */
-static bits_set(n)
-int n;
+static
+int bits_set(int n)
 {
     int ans = 0;
     while(n--)
@@ -279,24 +285,21 @@ int n;
     return ans;
 }
 
-static void leave(s)
-char *s;
+static
+void leave(const char *s)
 {
-    extern int errno;
-
     fprintf(stderr, "\n%s: ", progname);
     if (errno != 0)
       perror(s);
     else
       fprintf(stderr, "%s", s);
     fprintf(stderr, "\n");
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
 /* move to coordinates x, y (in pels) */
-p_move_abs(p, x, y)
-FILE *p;
-int x, y;
+static
+void p_move_abs(FILE *p, int x, int y)
 {
     if (x >= 0)  {
 	PMP(p, 3);
@@ -311,38 +314,36 @@ int x, y;
 }
 
 /* save current cursor position into (printer) register reg */
-p_save_cursor(p, reg)
-FILE *p;
-int reg;
+static
+void p_save_cursor(FILE *p, int reg)
 {
     PMP(p, 1);
     (void) putc(reg + '\200', p);
 }
 
 /* restore current cursor position from (printer) register reg */
-p_restore_cursor(p, reg)
-FILE *p;
-int reg;
+static
+void p_restore_cursor(FILE *p, int reg)
 {
     PMP(p, 1);
     (void) putc(reg + '\220', p);
 }
 
 /* set the page orientation to orient (see pmp.h) */
-p_set_orientation(p, orient)
-FILE *p;
-enum orientation orient;
+static
+void p_set_orientation(FILE *p, enum orientation orient)
 {
     PMP(p, 2);
     fprintf(p, "\322%c", (int) orient);
 }
 
 /* generate bitmap */
-p_bitmap(p, h, w, buflen, buf)
-FILE *p;
-unsigned int h, w;
-unsigned long buflen;
-unsigned char *buf;
+static
+void p_bitmap(
+  FILE *p,
+  unsigned int h, int w,
+  unsigned long buflen,
+  unsigned char *buf)
 {
     PMP(p, 9);
     (void) fwrite("\365\0", 1, 2, p);

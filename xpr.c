@@ -132,9 +132,7 @@ int debug = 0;
 #define DEFAULT_CUTOFF ((unsigned int) (0xFFFF * 0.50))
 
 char *infilename = NULL;
-char *progname;
-
-char *convert_data();
+char *progname   = NULL;
 
 typedef struct _grayRec {
     int level;
@@ -155,8 +153,137 @@ GrayRec gray2x2 = {sizeof(grayscale2x2)/sizeof(long), 2, 2, grayscale2x2};
 GrayRec gray3x3 = {sizeof(grayscale3x3)/sizeof(long), 3, 3, grayscale3x3};
 GrayRec gray4x4 = {sizeof(grayscale4x4)/sizeof(long), 4, 4, grayscale4x4};
 
-main(argc, argv)
-char **argv;
+/* Local prototypes */
+static void usage(void);
+static
+void parse_args(
+  int argc,
+  char **argv,
+  int *scale,
+  int *width,
+  int *height,
+  int *left,
+  int *top,
+  enum device *device,
+  int *flags,
+  int *split,
+  char **header,
+  char **trailer,
+  int *plane,
+  GrayPtr *gray,
+  int *density,
+  unsigned int *cutoff,
+  float *gamma,
+  int *render);
+static
+void setup_layout(
+  enum device device,
+  int win_width,
+  int win_height,
+  int flags,
+  int width,
+  int height,
+  char *header,
+  char *trailer,
+  int *scale,
+  enum orientation *orientation);
+static
+char *convert_data(
+    XWDFileHeader *win,
+    char *data,
+    int plane,
+    GrayPtr gray,
+    XColor *colors,
+    int flags);
+static
+void dump_sixmap(
+  register unsigned char (*sixmap)[],
+  int iw,
+  int ih);
+static
+void build_sixmap(
+  int ih,
+  int iw,
+  unsigned char (*sixmap)[],
+  int hpad,
+  XWDFileHeader *win,
+  const char *data);
+static void build_output_filename(const char *name, enum device device, const char *oname);
+static
+void ln03_setup(
+  int iw,
+  int ih,
+  enum orientation orientation,
+  int scale,
+  int left,
+  int top,
+  int *left_margin,
+  int *top_margin,
+  int flags,
+  const char *header,
+  const char *trailer);
+static void ln03_finish(void);
+static void la100_setup(int iw, int ih, int scale);
+static void la100_finish(void);
+static void dump_prolog(int flags);
+static int points(int n);
+static char *escape(const char *s);
+static
+void ps_setup(
+  int iw,
+  int ih,
+  enum orientation orientation,
+  int scale,
+  int left,
+  int top,
+  int flags,
+  const char *header,
+  const char *trailer,
+  const char *name);
+static void ps_finish(void);
+static void ln03_alter_background(
+  unsigned char (*sixmap)[],
+  int iw,
+  int ih);
+static
+void ln03_output_sixels(
+  unsigned char (*sixmap)[],
+  int iw,
+  int ih,
+  int nosixopt,
+  int split,
+  int scale,
+  int top_margin,
+  int left_margin);
+static void la100_output_sixels(
+  unsigned char (*sixmap)[],
+  int iw,
+  int ih,
+  int nosixopt);
+static void ps_output_bits(
+  int iw,
+  int ih,
+  int flags,
+  enum orientation orientation,
+  XWDFileHeader *win,
+  const char *data);
+static int ps_putbuf(
+  register unsigned char *s,
+  register int n,	
+  register int ocount,	
+  int compact);
+static void ps_bitrot(
+  unsigned char *s,
+  register int n,
+  int col,
+  register int owidth,
+  char *obuf);
+static void fullread (
+  int file,
+  char *data,
+  int nbytes);  
+  
+int main(int argc, char **argv)
 {
     unsigned long swaptest = 1;
     XWDFileHeader win;
@@ -199,7 +326,7 @@ char **argv;
 	      top >= 0? inch2pel((float)top/300.0): inch2pel(0.70),
 	      header, trailer,
 	      (flags & F_PORTRAIT)? PORTRAIT:
-	      ((flags & F_LANDSCAPE)? LANDSCAPE: UNSPECIFIED),
+	        ((flags & F_LANDSCAPE)? LANDSCAPE: UNSPECIFIED),
 	      (flags & F_INVERT));
 	exit(0);
     } else if ((device == LJET) || (device == PJET) || (device == PJETXL)) {
@@ -323,10 +450,11 @@ char **argv;
     }
     if (((device == LN03) || (device == LA100)) && (flags & F_DUMP))
 	dump_sixmap(sixmap, iw, ih);
-    exit(0);
+    exit(EXIT_SUCCESS);
 }
 
-usage()
+static
+void usage(void)
 {
     fprintf(stderr, "usage: %s [options] [file]\n", progname);
     fprintf(stderr, "    -append <file>  -noff  -output <file>\n");
@@ -349,38 +477,34 @@ usage()
     fprintf(stderr, "    -scale <scale>\n");
     fprintf(stderr, "    -slide\n");
     fprintf(stderr, "    -split <n-pages>\n");
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
-parse_args(argc, argv, scale, width, height, left, top, device, flags, 
-	   split, header, trailer, plane, gray, density, cutoff, gamma, render)
-register int argc;
-register char **argv;
-int *scale;
-int *width;
-int *height;
-int *left;
-int *top;
-enum device *device;
-int *flags;
-int *split;
-char **header;
-char **trailer;
-int *plane;
-GrayPtr *gray;
-int *density;
-unsigned int *cutoff;
-float *gamma;
-int *render;
+static
+void parse_args(
+  int argc,
+  char **argv,
+  int *scale,
+  int *width,
+  int *height,
+  int *left,
+  int *top,
+  enum device *device,
+  int *flags,
+  int *split,
+  char **header,
+  char **trailer,
+  int *plane,
+  GrayPtr *gray,
+  int *density,
+  unsigned int *cutoff,
+  float *gamma,
+  int *render)
 {
     register char *output_filename;
     register int f;
     register int len;
     register int pos;
-#ifdef X_NOT_STDC_ENV
-    double atof();
-    int atoi();
-#endif
 
     output_filename = NULL;
     *device = PS;	/* default */
@@ -665,18 +789,18 @@ int *render;
     }
 }
 
-setup_layout(device, win_width, win_height, flags, width, height, 
-	     header, trailer, scale, orientation)
-enum device device;
-int win_width;
-int win_height;
-int flags;
-int width;
-int height;
-char *header;
-char *trailer;
-int *scale;
-enum orientation *orientation;
+static
+void setup_layout(
+  enum device device,
+  int win_width,
+  int win_height,
+  int flags,
+  int width,
+  int height,
+  char *header,
+  char *trailer,
+  int *scale,
+  enum orientation *orientation)
 {
     register int w_scale;
     register int h_scale;
@@ -714,14 +838,14 @@ enum orientation *orientation;
     if (iscale > 0 && iscale < *scale) *scale = iscale;
 }
 
-char *
-convert_data(win, data, plane, gray, colors, flags)
-    register XWDFileHeader *win;
-    char *data;
-    int plane;
-    register GrayPtr gray;
-    XColor *colors;
-    int flags;
+static
+char *convert_data(
+    XWDFileHeader *win,
+    char *data,
+    int plane,
+    GrayPtr gray,
+    XColor *colors,
+    int flags)
 {
     XImage in_image_struct, out_image_struct;
     register XImage *in_image, *out_image;
@@ -908,10 +1032,11 @@ convert_data(win, data, plane, gray, colors, flags)
     return (out_image->data);
 }
 
-dump_sixmap(sixmap, iw, ih)
-register unsigned char (*sixmap)[];
-int iw;
-int ih;
+static
+void dump_sixmap(
+  register unsigned char (*sixmap)[],
+  int iw,
+  int ih)
 {
     register int i, j;
     register unsigned char *c;
@@ -926,13 +1051,14 @@ int ih;
     }
 }
 
-build_sixmap(iw, ih, sixmap, hpad, win, data)
-int ih;
-int iw;
-unsigned char (*sixmap)[];
-int hpad;
-XWDFileHeader *win;
-char *data;
+static
+void build_sixmap(
+  int ih,
+  int iw,
+  unsigned char (*sixmap)[],
+  int hpad,
+  XWDFileHeader *win,
+  const char *data)
 {
     int iwb = win->bytes_per_line;
     unsigned char *line[6];
@@ -989,9 +1115,8 @@ char *data;
     }
 }
 
-build_output_filename(name, device, oname)
-register char *name, *oname;
-enum device device;
+static
+void build_output_filename(const char *name, enum device device, const char *oname)
 {
     while (*name && *name != '.') *oname++ = *name++;
     switch (device) {
@@ -1011,19 +1136,19 @@ struct pixmap (**pixmap)[];
 }
 */
 
-ln03_setup(iw, ih, orientation, scale, left, top, left_margin, top_margin, 
-	   flags, header, trailer)
-int iw;
-int ih;
-enum orientation orientation;
-int scale;
-int left;
-int top;
-int *left_margin;
-int *top_margin;
-int flags;
-char *header;
-char *trailer;
+static
+void ln03_setup(
+  int iw,
+  int ih,
+  enum orientation orientation,
+  int scale,
+  int left,
+  int top,
+  int *left_margin,
+  int *top_margin,
+  int flags,
+  const char *header,
+  const char *trailer)
 {
     register int i;
     register int lm, tm, xm;
@@ -1078,8 +1203,8 @@ char *trailer;
     *left_margin = lm;
 }
 
-
-ln03_finish()
+static
+void ln03_finish(void)
 {
     char buf[256];
     register char *bp = buf;
@@ -1094,11 +1219,11 @@ ln03_finish()
 
 
     write(1, buf, bp-buf);    
-
 }
 
 /*ARGSUSED*/
-la100_setup(iw, ih, scale)
+static
+void la100_setup(int iw, int ih, int scale)
 {
     char buf[256];
     register char *bp;
@@ -1119,7 +1244,8 @@ la100_setup(iw, ih, scale)
 
 #define LA100_RESET "\033[1;80s\033[?7h"
 
-la100_finish()
+static
+void la100_finish(void)
 {
     write(1, LA100_RESET, sizeof LA100_RESET - 1);
 }
@@ -1128,7 +1254,9 @@ la100_finish()
 
 #ifdef XPROLOG
 /* for debugging, get the prolog from a file */
-dump_prolog(flags) {
+static
+void dump_prolog(int flags)
+{
     char *fname=(flags & F_COMPACT) ? "prolog.compact" : "prolog";
     FILE *fi = fopen(fname,"r");
     char buf[1024];
@@ -1144,6 +1272,7 @@ dump_prolog(flags) {
 #else /* XPROLOG */
 /* postscript "programs" to unpack and print the bitmaps being sent */
 
+const
 char *ps_prolog_compact[] = {
     "%%Pages: 1",
     "%%EndProlog",
@@ -1217,6 +1346,7 @@ char *ps_prolog_compact[] = {
     0
 };
 
+const 
 char *ps_prolog[] = {
     "%%Pages: 1",
     "%%EndProlog",
@@ -1248,26 +1378,27 @@ char *ps_prolog[] = {
     0
 };
 
-dump_prolog(flags) {
-    char **p = (flags & F_COMPACT) ? ps_prolog_compact : ps_prolog;
-    while (*p) printf("%s\n",*p++);
+static
+void dump_prolog(int flags) {
+    const char **p = (flags & F_COMPACT) ? ps_prolog_compact : ps_prolog;
+    while (*p)
+        printf("%s\n", *p++);
 }
 #endif /* XPROLOG */
 
 #define PAPER_WIDTH 85*30 /* 8.5 inches */
 #define PAPER_LENGTH 11*300 /* 11 inches */
 
-static int
-points(n)
+static
+int points(int n)
 {
     /* scale n from pixels (1/300 inch) to points (1/72 inch) */
     n *= 72;
     return n/300;
 }
 
-static char *
-escape(s)
-char *s;
+static
+char *escape(const char *s)
 {
     /* make a version of s in which control characters are deleted and
      * special characters are escaped.
@@ -1287,18 +1418,18 @@ char *s;
     return buf;
 }
 
-ps_setup(iw, ih, orientation, scale, left, top, 
-	   flags, header, trailer, name)
-int iw;
-int ih;
-enum orientation orientation;
-int scale;
-int left;
-int top;
-int flags;
-char *header;
-char *trailer;
-char *name;
+static
+void ps_setup(
+  int iw,
+  int ih,
+  enum orientation orientation,
+  int scale,
+  int left,
+  int top,
+  int flags,
+  const char *header,
+  const char *trailer,
+  const char *name)
 {
     char    hostname[256];
 #ifdef WIN32
@@ -1401,6 +1532,7 @@ char *name;
     }
 }
 
+const
 char *ps_epilog[] = {
 	"",
 	"showpage",
@@ -1408,17 +1540,19 @@ char *ps_epilog[] = {
 	0
 };
 
-ps_finish()
+static
+void ps_finish(void)
 {
 	char **p = ps_epilog;
 
 	while (*p) printf("%s\n",*p++);
 }
 
-ln03_alter_background(sixmap, iw, ih)
-unsigned char (*sixmap)[];
-int iw;
-int ih;
+static
+void ln03_alter_background(
+  unsigned char (*sixmap)[],
+  int iw,
+  int ih)
 {
     register unsigned char *c, *stopc;
     register unsigned char *startc;
@@ -1447,15 +1581,16 @@ int ih;
     }
 }
 
-ln03_output_sixels(sixmap, iw, ih, nosixopt, split, scale, top_margin, 
-		   left_margin)
-unsigned char (*sixmap)[];
-int iw;
-int ih;
-int nosixopt;
-int split;
-int top_margin;
-int left_margin;
+static
+void ln03_output_sixels(
+  unsigned char (*sixmap)[],
+  int iw,
+  int ih,
+  int nosixopt,
+  int split,
+  int scale,
+  int top_margin,
+  int left_margin)
 {
     unsigned char *buf;
     register unsigned char *bp;
@@ -1526,11 +1661,12 @@ int left_margin;
 }
 
 /*ARGSUSED*/
-la100_output_sixels(sixmap, iw, ih, nosixopt)
-unsigned char (*sixmap)[];
-int iw;
-int ih;
-int nosixopt;
+static
+void la100_output_sixels(
+  unsigned char (*sixmap)[],
+  int iw,
+  int ih,
+  int nosixopt)
 {
     unsigned char *buf;
     register unsigned char *bp;
@@ -1589,13 +1725,14 @@ int nosixopt;
 
 #define LINELEN 72 /* number of CHARS (bytes*2) per line of bitmap output */
 
-ps_output_bits(iw, ih, flags, orientation, win, data)
-int iw;
-int ih;
-int flags;
-XWDFileHeader *win;
-enum orientation orientation;
-char *data;
+static
+void ps_output_bits(
+  int iw,
+  int ih,
+  int flags,
+  enum orientation orientation,
+  XWDFileHeader *win,
+  const char *data)
 {
     unsigned long swaptest = 1;
     int iwb = win->bytes_per_line;
@@ -1603,7 +1740,6 @@ char *data;
     int bytes;
     unsigned char *buffer = (unsigned char *)data;
     register int ocount=0;
-    extern char hex1[],hex2[];
     static char hex[] = "0123456789abcdef";
 
     if (orientation == LANDSCAPE) {
@@ -1665,6 +1801,7 @@ char *data;
     }
 }
 
+const
 unsigned char _reverse_byte[0x100] = {
 	0x00, 0x80, 0x40, 0xc0, 0x20, 0xa0, 0x60, 0xe0,
 	0x10, 0x90, 0x50, 0xd0, 0x30, 0xb0, 0x70, 0xf0,
@@ -1700,9 +1837,9 @@ unsigned char _reverse_byte[0x100] = {
 	0x1f, 0x9f, 0x5f, 0xdf, 0x3f, 0xbf, 0x7f, 0xff
 };
 
-_invbits (b, n)
-	register unsigned char *b;
-	register long n;
+void _invbits (
+  register unsigned char *b,
+  register long n)
 {
 	do {
 		*b = ~*b;
@@ -1713,9 +1850,9 @@ _invbits (b, n)
 
 /* copied from lib/X/XPutImage.c */
 
-_swapbits (b, n)
-	register unsigned char *b;
-	register long n;
+void _swapbits (
+  register unsigned char *b,
+  register long n)
 {
 	do {
 		*b = _reverse_byte[*b];
@@ -1724,9 +1861,9 @@ _swapbits (b, n)
 	
 }
 
-_swapshort (bp, n)
-     register char *bp;
-     register long n;
+void _swapshort (
+  register char *bp,
+  register long n)
 {
 	register char c;
 	register char *ep = bp + n;
@@ -1740,9 +1877,9 @@ _swapshort (bp, n)
 	while (bp < ep);
 }
 
-_swaplong (bp, n)
-     register char *bp;
-     register long n;
+void _swaplong (
+     register char *bp,
+     register long n)
 {
 	register char c;
 	register char *ep = bp + n;
@@ -1766,12 +1903,12 @@ _swaplong (bp, n)
  * output line.  It's new value is returned as the result of the function.
  * Ocount is ignored (and the return value is meaningless) if compact==0.
  */
-int
-ps_putbuf(s, n, ocount, compact)
-register unsigned char *s;	/* buffer to dump */
-register int n;			/* number of BITS to dump */
-register int ocount;		/* position on output line for next char */
-int compact;			/* if non-zero, do compaction (see below) */
+static
+int ps_putbuf(
+  register unsigned char *s,	/* buffer to dump */
+  register int n,		/* number of BITS to dump */
+  register int ocount,		/* position on output line for next char */
+  int compact)			/* if non-zero, do compaction (see below) */
 {
     register int ffcount = 0;
     extern char hex1[],hex2[];
@@ -1833,12 +1970,13 @@ int compact;			/* if non-zero, do compaction (see below) */
     return ocount;
 }
 
-ps_bitrot(s,n,col,owidth,obuf)
-unsigned char *s;
-register int n;
-int col;
-register int owidth;
-char *obuf;
+static
+void ps_bitrot(
+  unsigned char *s,
+  register int n,
+  int col,
+  register int owidth,
+  char *obuf)
 /* s points to a chunk of memory and n is its width in bits.
  * The algorithm is, roughly,
  *    for (i=0;i<n;i++) {
@@ -1880,11 +2018,12 @@ char *obuf;
 /* fullread() is the same as read(), except that it guarantees to 
    read all the bytes requested. */
 
-fullread (file, data, nbytes)
-    int file;
-    char *data;
-    int nbytes;
-    {
+static
+void fullread (
+  int file,
+  char *data,
+  int nbytes)
+{
     int bytes_read;
     while ((bytes_read = read(file, data, nbytes)) != nbytes) {
 	if (bytes_read < 0) {
@@ -1898,16 +2037,18 @@ fullread (file, data, nbytes)
 	nbytes -= bytes_read;
 	data += bytes_read;
 	}
-    }
+}
 
 /* mapping tables to map a byte in to the hex representation of its
  * bit-reversal
  */
+const
 char hex1[]="084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f\
 084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f\
 084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f\
 084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f084c2a6e195d3b7f";
 
+const
 char hex2[]="000000000000000088888888888888884444444444444444cccccccccccccccc\
 2222222222222222aaaaaaaaaaaaaaaa6666666666666666eeeeeeeeeeeeeeee\
 111111111111111199999999999999995555555555555555dddddddddddddddd\

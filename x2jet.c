@@ -86,7 +86,6 @@ from the X Consortium.
 #define NL_SETN 2	/* set number */
 #include <nl_types.h>
 
-extern  char *catgets();
 extern	nl_catd	nlmsg_fd;
 
 #endif /* NLS */
@@ -132,19 +131,144 @@ static unsigned long Z_pixel_mask;
 
 static int true_scale;
 
-extern	char	*progname;
+typedef struct {
+  unsigned long Rmask, Gmask, Bmask;
+  int Rshift, Gshift, Bshift;
+} RGBshiftmask;
 
-void fatal_err();
-void fatal_err2();
+/* Local prototypes */
+static void set_image_limits (  int scale, int density,  enum orientation orient,  Area print_area);
+static void set_header_trailer_limits (const char *header, const char *trailer, long printwidth);
+static void set_print_locations (  int scale, int density,  int top, int left,  const char *header, const char *trailer,  enum orientation orient,  int position_on_page);
+static int scale_raster (
+  int density,
+  enum orientation orient,
+  Area print_area);
+static void scale_and_orient_image (
+  int *scale, int *density,
+  int width, int height, int left, int top,  /* in 300ths of an inch */
+  const char *header, const char *trailer,
+  enum orientation *orient,
+  int position_on_page,
+  enum device device);
+static void setup_RGBshiftmask (RGBshiftmask *sm, unsigned long rmask, unsigned long gmask, unsigned long bmask);
+static void swap_black_and_white (void);
+static void reset_color_mapping (void);
+static void prepare_color_mapping (
+  int invert, int paintjet,
+  unsigned int cutoff,
+  FILE *out);
+static
+void select_grey (int level, int *r, int *g, int *b);
+static int load_printer_color (
+  long index,
+  int nearmatch,
+  enum device device);
+static int lookup_color_index (long i);
+static void select_printer_color (
+  long index,
+  int *red, int *green, int *blue,
+  long *compositeRGB,
+  enum device device);
+static int color_already_in_printer (long compositeRGB, long *pindex);
+static int program_new_printer_color (
+  int red, int green, int blue,
+  long compositeRGB,
+  long *pindex);
+static long composite_diff (long x, long y);
+static long find_nearest_programmed_color (long compositeRGB);
+static void add_index_to_chain (
+  long cindex,
+  long pindex);
+static int load_printer_color_DT (
+  long index,
+  int nearmatch,
+  enum device device);
+static int load_line_colors (
+  long *line,
+  int length, int nearmatch,
+  enum device device);
+static void download_colors (
+  long *line,
+  int length,
+  enum device device);
+static void validate_visual(void);
+static void read_xwd_data (FILE *in);
+static void write_image_prefix (
+  FILE *out,
+  int scale, int density,
+  const char *header,
+  enum device device,
+  int position_on_page, int initial_formfeed,
+  enum orientation orient,
+  float gamma,
+  int render,
+  int slide);
+static void write_image_suffix (
+  FILE *out,
+  const char *trailer,
+  int position_on_page,
+  int slide, int render,
+  enum device device);
+static unsigned long Z_image_pixel (int x, int y);
+static unsigned long XY_image_pixel (int x, int y);
+static void direct_by_pixel(
+  FILE *out,
+  long *line,
+  int length,
+  enum device device);
+static void index_by_pixel(
+  FILE *out,
+  long *line,
+  int length);
+static void write_raster_line (
+  FILE *out,
+  int scale,
+  enum device device,
+  long *line,
+  int length);
+static void write_portrait_Z_image (
+  FILE *out,
+  int scale,
+  enum device device);
+static void write_landscape_Z_image (
+  FILE *out,
+  int scale,
+  enum device device);
+static void write_portrait_XY_image (
+  FILE *out,
+  int scale,
+  enum device device);
+static void write_landscape_XY_image (
+  FILE *out,
+  int scale,
+  enum device device);
+static void write_Z_image (
+  FILE *out,
+  int scale,
+  enum orientation orient,
+  enum device device);
+static void write_XY_image (
+  FILE *out,
+  int scale,
+  enum orientation orient,
+  enum device device);
+static void write_image (
+  FILE *out,
+  int scale,
+  enum orientation orient,
+  enum device device);
+static void fatal_err (const char *s, ...);
+
 
 /* Computes the centipoint width of one printer dot. */
-#define dot_centipoints(s,d)	((7200.0 * s) / d)
+#define dot_centipoints(s,d)	((7200.0 * (s)) / (d))
 
-
-void set_image_limits (scale, density, orient, print_area)
-int scale, density;
-enum orientation orient;
-Area print_area;
+static
+void set_image_limits (
+  int scale, int density,
+  enum orientation orient,
+  Area print_area)
 {
   Area print_dots;
   double dotsize;
@@ -174,10 +298,8 @@ Area print_area;
 }
 
 
-
-void set_header_trailer_limits (header, trailer, printwidth)
-char *header, *trailer;
-long printwidth;
+static
+void set_header_trailer_limits (const char *header, const char *trailer, long printwidth)
 {
   /* Determine the number of header and trailer characters
    * that will fit into the available printing area.
@@ -204,13 +326,13 @@ long printwidth;
 }
 
 
-void set_print_locations (scale, density, top, left,
-			  header, trailer, orient, position_on_page)
-int scale, density;
-int top, left;
-char *header, *trailer;
-enum orientation orient;
-int position_on_page;
+static
+void set_print_locations (
+  int scale, int density,
+  int top, int left,
+  const char *header, const char *trailer,
+  enum orientation orient,
+  int position_on_page)
 {
   Area image;
   double dotsize;
@@ -249,10 +371,11 @@ int position_on_page;
 }
 
 
-int scale_raster (density, orient, print_area)
-int density;
-enum orientation orient;
-Area print_area;
+static
+int scale_raster (
+  int density,
+  enum orientation orient,
+  Area print_area)
 {
   Area image;
   int h_scale, v_scale;
@@ -284,15 +407,14 @@ Area print_area;
 }
 
 
-scale_and_orient_image (scale, density, width, height, left, top,
-			header, trailer,
-			orient, position_on_page, device)
-int *scale, *density;
-int width, height, left, top;  /* in 300ths of an inch */
-char *header, *trailer;
-enum orientation *orient;
-int position_on_page;
-enum device device;
+static
+void scale_and_orient_image (
+  int *scale, int *density,
+  int width, int height, int left, int top,  /* in 300ths of an inch */
+  const char *header, const char *trailer,
+  enum orientation *orient,
+  int position_on_page,
+  enum device device)
 {
   Area usable;
 
@@ -408,12 +530,6 @@ static int color_warning_given = FALSE;
 char Direct_or_TrueColor;
 
 
-typedef struct {
-  unsigned long Rmask, Gmask, Bmask;
-  int Rshift, Gshift, Bshift;
-} RGBshiftmask;
-
-
 /* Color index element definition, these are linked into a circular list
  * for interpretation of DirectColor or TrueColor visual types.
  */
@@ -439,9 +555,10 @@ struct {
 } color;
 
 
-void setup_RGBshiftmask (sm, rmask, gmask, bmask)
-RGBshiftmask *sm;
-unsigned long rmask, gmask, bmask;
+static
+void setup_RGBshiftmask (
+  RGBshiftmask *sm,
+  unsigned long rmask, unsigned long gmask, unsigned long bmask)
 {
   sm->Rmask = rmask;  sm->Gmask = gmask;  sm->Bmask = bmask;
   sm->Rshift = 0;     sm->Gshift = 0;     sm->Bshift = 0;
@@ -462,8 +579,8 @@ unsigned long rmask, gmask, bmask;
 }
 
 
-
-void swap_black_and_white ()
+static
+void swap_black_and_white (void)
 {
   /* Reverse black and white in the Xcolor structure array. */
 
@@ -479,7 +596,8 @@ void swap_black_and_white ()
 }
 
 
-void reset_color_mapping ()
+static
+void reset_color_mapping (void)
 {
   int n;
   long *cmap;
@@ -510,11 +628,11 @@ void reset_color_mapping ()
 
 #define Intensity(r,g,b)	((r) * 0.30 + (g) * 0.59 + (b) * 0.11)
 
-
-void prepare_color_mapping (invert, paintjet, cutoff, out)
-int invert, paintjet;
-unsigned int cutoff;
-FILE *out;
+static
+void prepare_color_mapping (
+  int invert, int paintjet,
+  unsigned int cutoff,
+  FILE *out)
 {
   int n;
   long *cmap;
@@ -580,9 +698,8 @@ FILE *out;
 #define is_grey(r,g,b)	((r == g) && (r == b))
 
 
-
-void select_grey (level, r, g, b)
-int level, *r, *g, *b;
+static
+void select_grey (int level, int *r, int *g, int *b)
 {
   /* Forced selection of a grey.  This is done since the PaintJet does
    * not do very well when picking greys, they tend to become pink!
@@ -605,12 +722,11 @@ int level, *r, *g, *b;
 }
 
 
-long find_nearest_programmed_color ();
-
-int load_printer_color (index, nearmatch, device) /* for non Direct/TrueColor */
-long index;
-int nearmatch;
-enum device device;
+static
+int load_printer_color (
+  long index,
+  int nearmatch,
+  enum device device) /* for non Direct/TrueColor */
 {
   int n, red, blue, green, xred, xgreen, xblue;
   long compositeRGB;
@@ -665,8 +781,8 @@ enum device device;
  * the last cell matched on the theory that this will allow faster lookup
  * for runs of color.
  */
-int lookup_color_index (i)
-long i;
+static
+int lookup_color_index (long i)
 {
   COLORINDEX *start, *current;
 
@@ -690,11 +806,12 @@ long i;
 /* Calculate the individual and composite printer RGB values.  (Only the
  * composite value is set for monochrome output.)
  */
-void select_printer_color (index, red, green, blue, compositeRGB, device)
-long index;
-int *red, *green, *blue;
-long *compositeRGB;
-enum device device;
+static
+void select_printer_color (
+  long index,
+  int *red, int *green, int *blue,
+  long *compositeRGB,
+  enum device device)
 {
   int xred, xgreen, xblue;
 
@@ -736,8 +853,8 @@ enum device device;
  * colors already programmed into the printer.  Returns 1 if found,
  * 0 otherwise.  The matching array index is returned in pindex.
  */
-int color_already_in_printer (compositeRGB, pindex)
-long compositeRGB, *pindex;
+static
+int color_already_in_printer (long compositeRGB, long *pindex)
 {
   int n;
 
@@ -752,10 +869,11 @@ long compositeRGB, *pindex;
 }
 
 
-int program_new_printer_color (red, green, blue, compositeRGB, pindex)
-int red, green, blue;
-long compositeRGB;
-long *pindex;
+static
+int program_new_printer_color (
+  int red, int green, int blue,
+  long compositeRGB,
+  long *pindex)
 {
   int n;
 
@@ -777,9 +895,8 @@ long *pindex;
 }
 
 
-
-long composite_diff (x, y)
-long x, y;
+static
+long composite_diff (long x, long y)
 {
   long r = (x >> 16 & 0xFF) - (y >> 16 & 0xFF);
   long g = (x >> 8 & 0xFF) - (y >> 8 & 0xFF);
@@ -789,9 +906,8 @@ long x, y;
 }
 
 
-
-long find_nearest_programmed_color (compositeRGB)
-long compositeRGB;
+static
+long find_nearest_programmed_color (long compositeRGB)
 {
   int n, nearest = 0;
   long neardiff = composite_diff(pjcolor[0], compositeRGB);
@@ -808,9 +924,10 @@ long compositeRGB;
 }
 
 
-void add_index_to_chain (cindex, pindex)
-long cindex;
-long pindex;
+static
+void add_index_to_chain (
+  long cindex,
+  long pindex)
 {
   COLORINDEX *new;
 
@@ -842,11 +959,11 @@ long pindex;
 }
 
 
-
-int load_printer_color_DT (index, nearmatch, device) /* for Direct/TrueColor */
-long index;
-int nearmatch;
-enum device device;
+static
+int load_printer_color_DT (
+  long index,
+  int nearmatch,
+  enum device device) /* for Direct/TrueColor */
 {
   int pjred, pjgreen, pjblue;
   long compositeRGB;
@@ -873,10 +990,11 @@ enum device device;
 }
 
 
-int load_line_colors (line, length, nearmatch, device)
-long *line;
-int length, nearmatch;
-enum device device;
+static
+int load_line_colors (
+  long *line,
+  int length, int nearmatch,
+  enum device device)
 {
   int result = 1;  /* initialized to "success" */
 
@@ -891,11 +1009,11 @@ enum device device;
 }
 
 
-
-void download_colors (line, length, device)
-long *line;
-int length;
-enum device device;
+static
+void download_colors (
+  long *line,
+  int length,
+  enum device device)
 {
   /* For the first attempt at loading the colors for a line only exact
    * color matches are accepted.  If this fails, the closest colors are
@@ -919,7 +1037,8 @@ enum device device;
 }
 
 
-void validate_visual()
+static
+void validate_visual(void)
 {
   int depth = xwd_header.pixmap_depth;
   char *errmsg = catgets(nlmsg_fd,NL_SETN,25,
@@ -927,27 +1046,27 @@ void validate_visual()
 
   switch (xwd_header.visual_class) {
   case GrayScale:
-    if (depth > 8)  fatal_err2(errmsg, depth, "GrayScale");    break;
+    if (depth > 8)  fatal_err(errmsg, depth, "GrayScale");    break;
   case StaticGray:
-    if (depth > 8)  fatal_err2(errmsg, depth, "StaticGray");    break;
+    if (depth > 8)  fatal_err(errmsg, depth, "StaticGray");    break;
   case PseudoColor:
-    if (depth > 8)  fatal_err2(errmsg, depth, "PseudoColor");    break;
+    if (depth > 8)  fatal_err(errmsg, depth, "PseudoColor");    break;
   case StaticColor:
-    if (depth > 8)  fatal_err2(errmsg, depth, "StaticColor");    break;
+    if (depth > 8)  fatal_err(errmsg, depth, "StaticColor");    break;
   case DirectColor:
   case TrueColor:
     if (depth != 12 && depth != 24)
-       fatal_err2(errmsg, depth, (xwd_header.visual_class == DirectColor)
+       fatal_err(errmsg, depth, (xwd_header.visual_class == DirectColor)
                                ? "DirectColor" : "TrueColor");
     break;
   default:
-    fatal_err2((catgets(nlmsg_fd,NL_SETN,26,
+    fatal_err((catgets(nlmsg_fd,NL_SETN,26,
 		"visual class #%d not supported.\n")), xwd_header.visual_class);
   }
 }
 
-void read_xwd_data (in)
-FILE *in;
+static
+void read_xwd_data (FILE *in)
 {
 #   define WINDOW_NAME_ALLOC	32
     unsigned long swaptest = 1;
@@ -1016,17 +1135,17 @@ FILE *in;
 }
 
 
-write_image_prefix (out, scale, density, header, device, position_on_page,
-		    initial_formfeed, orient, gamma, render, slide)
-FILE *out;
-int scale, density;
-char *header;
-enum device device;
-int position_on_page, initial_formfeed;
-enum orientation orient;
-float gamma;
-int render;
-int slide;
+static
+void write_image_prefix (
+  FILE *out,
+  int scale, int density,
+  const char *header,
+  enum device device,
+  int position_on_page, int initial_formfeed,
+  enum orientation orient,
+  float gamma,
+  int render,
+  int slide)
 {
   if (initial_formfeed)
     fprintf(out,"\014");
@@ -1135,12 +1254,13 @@ int slide;
 }
 
 
-write_image_suffix (out, trailer, position_on_page, slide, render, device)
-FILE *out;
-char *trailer;
-int position_on_page;
-int slide, render;
-enum device device;
+static
+void write_image_suffix (
+  FILE *out,
+  const char *trailer,
+  int position_on_page,
+  int slide, int render,
+  enum device device)
 {
   /* Exit raster graphics mode */
   if (device == PJETXL)
@@ -1170,8 +1290,8 @@ enum device device;
 }
 
 
-unsigned long Z_image_pixel (x, y)
-int x, y;
+static
+unsigned long Z_image_pixel (int x, int y)
 {
   int pixel_bytes, offset;
   unsigned char *image;
@@ -1232,8 +1352,8 @@ int x, y;
 }
 
 
-unsigned long XY_image_pixel (x, y)
-int x, y;
+static
+unsigned long XY_image_pixel (int x, int y)
 {
   int plane_start, line_start, bytes_per_bitmap_unit, bitmap_unit_start,
       byte_within_bitmap_unit, offset, byte_mask;
@@ -1257,11 +1377,12 @@ int x, y;
 }
 
 
-void direct_by_pixel(out, line, length, device)
-FILE *out;
-long *line;
-int length;
-enum device device;
+static
+void direct_by_pixel(
+  FILE *out,
+  long *line,
+  int length,
+  enum device device)
 {
    int red, green, blue;
    long compositeRGB;
@@ -1274,10 +1395,11 @@ enum device device;
 }
 
 
-void index_by_pixel(out, line, length)
-FILE *out;
-long *line;
-int length;
+static
+void index_by_pixel(
+  FILE *out,
+  long *line,
+  int length)
 {
    register int n;
    long *lp;
@@ -1298,12 +1420,13 @@ int length;
 }
 
 
-void write_raster_line (out, scale, device, line, length)
-FILE *out;
-int scale;
-enum device device;
-long *line;
-int length;
+static
+void write_raster_line (
+  FILE *out,
+  int scale,
+  enum device device,
+  long *line,
+  int length)
 {
   int planes = (device == PJET) ? 4 : 1;
   int raster_bytes = (length * scale + 7) / 8;
@@ -1370,10 +1493,11 @@ int length;
 }
 
 
-void write_portrait_Z_image (out, scale, device)
-FILE *out;
-int scale;
-enum device device;
+static
+void write_portrait_Z_image (
+  FILE *out,
+  int scale,
+  enum device device)
 {
   int x, y;
   int width = limit.width;
@@ -1394,11 +1518,11 @@ enum device device;
 }
 
 
-
-void write_landscape_Z_image (out, scale, device)
-FILE *out;
-int scale;
-enum device device;
+static
+void write_landscape_Z_image (
+  FILE *out,
+  int scale,
+  enum device device)
 {
   int x, y;
   int width = limit.height;
@@ -1419,10 +1543,11 @@ enum device device;
 }
 
 
-void write_portrait_XY_image (out, scale, device)
-FILE *out;
-int scale;
-enum device device;
+static
+void write_portrait_XY_image (
+  FILE *out,
+  int scale,
+  enum device device)
 {
   int x, y;
   int width = limit.width;
@@ -1443,11 +1568,11 @@ enum device device;
 }
 
 
-
-void write_landscape_XY_image (out, scale, device)
-FILE *out;
-int scale;
-enum device device;
+static
+void write_landscape_XY_image (
+  FILE *out,
+  int scale,
+  enum device device)
 {
   int x, y;
   int width = limit.height;
@@ -1468,11 +1593,12 @@ enum device device;
 }
 
 
-void write_Z_image (out, scale, orient, device)
-FILE *out;
-int scale;
-enum orientation orient;
-enum device device;
+static
+void write_Z_image (
+  FILE *out,
+  int scale,
+  enum orientation orient,
+  enum device device)
 {
   if (orient == PORTRAIT) {
     write_portrait_Z_image(out, scale, device);
@@ -1481,12 +1607,12 @@ enum device device;
 }
 
 
-
-void write_XY_image (out, scale, orient, device)
-FILE *out;
-int scale;
-enum orientation orient;
-enum device device;
+static
+void write_XY_image (
+  FILE *out,
+  int scale,
+  enum orientation orient,
+  enum device device)
 {
   if (xwd_header.pixmap_depth > 1)
     fatal_err((catgets(nlmsg_fd,NL_SETN,22,
@@ -1499,12 +1625,12 @@ enum device device;
 }
 
 
-
-void write_image (out, scale, orient, device)
-FILE *out;
-int scale;
-enum orientation orient;
-enum device device;
+static
+void write_image (
+  FILE *out,
+  int scale,
+  enum orientation orient,
+  enum device device)
 {
   switch (xwd_header.pixmap_format) {
   case XYPixmap:
@@ -1517,20 +1643,17 @@ enum device device;
 }
 
 
-void x2jet(in, out, scale, density, width, height, left, top,
-	   header, trailer, orient, invert,
-	   initial_formfeed, position_on_page, slide,
-	   device, cutoff, gamma, render)
-FILE *in, *out;
-int scale, density;
-int width, height, left, top;  /* in 300ths of an inch */
-char *header, *trailer;
-enum orientation orient;
-int invert, initial_formfeed, position_on_page, slide;
-enum device device;
-unsigned int cutoff;
-float gamma;
-int render;
+void x2jet(
+  FILE *in, FILE *out,
+  int scale, int density,
+  int width, int height, int left, int top,  /* in 300ths of an inch */
+  const char *header, const char *trailer,
+  enum orientation orient,
+  int invert, int initial_formfeed, int position_on_page, int slide,
+  enum device device,
+  unsigned int cutoff,
+  float gamma,
+  int render)
 {
   int paintjet = FALSE;
 
@@ -1559,19 +1682,10 @@ int render;
   fclose(out);
 }
 
-
-void fatal_err (s)
-char * s;
+static
+void fatal_err (const char *s, ...)
 {
   fprintf(stderr, "%s: %s\n", progname, s);
-  exit(1);
+  exit(EXIT_FAILURE);
 }
 
-void fatal_err2 (s, a1, a2, a3)
-char *s;
-char *a1, *a2, *a3;
-{
-  fprintf(stderr, "%s: ", progname);
-  fprintf(stderr, s, a1, a2, a3);
-  exit(1);
-}
