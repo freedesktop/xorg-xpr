@@ -21,8 +21,8 @@
 
 bin_PROGRAMS = xpr
 
-xpr_CFLAGS = $(DEP_CFLAGS) -DNOINLINE
-xpr_LDADD = $(DEP_LIBS) -lm
+xpr_CFLAGS = $(XPR_CFLAGS) -DNOINLINE
+xpr_LDADD = $(XPR_LIBS) -lm
 
 xpr_SOURCES =	\
         lncmd.h \
