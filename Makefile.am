@@ -32,7 +32,7 @@ xpr_SOURCES =	\
         xpr.c \
         xpr.h
 
-dist_man_MANS = \
+dist_man1_MANS = \
         xdpr.man \
         xpr.man
 
