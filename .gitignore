@@ -20,3 +20,7 @@ xdpr.1
 xpr
 xpr.1
 *~
+*.o
+xpr-*.tar.*
+ChangeLog
+tags
