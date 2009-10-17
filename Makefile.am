@@ -21,7 +21,7 @@
 
 bin_PROGRAMS = xpr
 
-AM_CFLAGS = $(XPR_CFLAGS) -DNOINLINE
+AM_CFLAGS = $(CWARNFLAGS) $(XPR_CFLAGS) -DNOINLINE
 xpr_LDADD = $(XPR_LIBS) -lm
 
 xpr_SOURCES =	\
@@ -40,7 +40,7 @@ appman_PRE = \
 bin_SCRIPTS = xdpr
 
 xdpr: xdpr.script
-	cp $(top_srcdir)/xdpr.script xdpr
+	$(AM_V_GEN)cp $(top_srcdir)/xdpr.script xdpr
 
 CLEANFILES = xdpr
 
@@ -84,4 +84,4 @@ MAN_SUBSTS = \
 SUFFIXES = .$(APP_MAN_SUFFIX) .man
 
 .man.$(APP_MAN_SUFFIX):
-	sed $(MAN_SUBSTS) < $< > $@
+	$(AM_V_GEN)$(SED) $(MAN_SUBSTS) < $< > $@
