@@ -1041,27 +1041,35 @@ void download_colors (
 }
 
 
+static _X_INLINE _X_NORETURN
+void invalid_depth_for_visual(int depth, const char *name)
+{
+    fatal_err(catgets(nlmsg_fd,NL_SETN,25,
+		      "%d bit deep %s bitmap not supported.\n"),
+	      depth, name);
+}
+
 static
 void validate_visual(void)
 {
   int depth = xwd_header.pixmap_depth;
-  char *errmsg = catgets(nlmsg_fd,NL_SETN,25,
-				"%d bit deep %s bitmap not supported.\n");
 
   switch (xwd_header.visual_class) {
   case GrayScale:
-    if (depth > 8)  fatal_err(errmsg, depth, "GrayScale");    break;
+    if (depth > 8)  invalid_depth_for_visual(depth, "GrayScale");    break;
   case StaticGray:
-    if (depth > 8)  fatal_err(errmsg, depth, "StaticGray");    break;
+    if (depth > 8)  invalid_depth_for_visual(depth, "StaticGray");   break;
   case PseudoColor:
-    if (depth > 8)  fatal_err(errmsg, depth, "PseudoColor");    break;
+    if (depth > 8)  invalid_depth_for_visual(depth, "PseudoColor");  break;
   case StaticColor:
-    if (depth > 8)  fatal_err(errmsg, depth, "StaticColor");    break;
+    if (depth > 8)  invalid_depth_for_visual(depth, "StaticColor");  break;
   case DirectColor:
+    if (depth != 12 && depth != 24)
+	invalid_depth_for_visual(depth, "DirectColor");
+    break;
   case TrueColor:
     if (depth != 12 && depth != 24)
-       fatal_err(errmsg, depth, (xwd_header.visual_class == DirectColor)
-                               ? "DirectColor" : "TrueColor");
+	invalid_depth_for_visual(depth, "TrueColor");
     break;
   default:
     fatal_err((catgets(nlmsg_fd,NL_SETN,26,
