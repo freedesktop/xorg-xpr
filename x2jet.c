@@ -72,6 +72,7 @@ from the X Consortium.
 #include <stdarg.h>
 #include <X11/Xlib.h>
 #include <X11/XWDFile.h>
+#include <X11/Xfuncproto.h>
 
 #include "xpr.h"
 
@@ -260,10 +261,7 @@ static void write_image (
   enum orientation orient,
   enum device device);
 static void fatal_err (const char *s, ...)
-#if defined(__GNUC__) && (__GNUC__ > 2)
-__attribute__((noreturn, format(printf, 1, 2)))
-#endif
-    ;
+  _X_NORETURN _X_ATTRIBUTE_PRINTF(1,2);
 
 
 /* Computes the centipoint width of one printer dot. */
