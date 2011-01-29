@@ -36,15 +36,9 @@ AM_MAINTAINER_MODE
 m4_ifndef([XORG_MACROS_VERSION],
 	  [m4_fatal([must install xorg-macros 1.8 or later before running autoconf/autogen])])
 XORG_MACROS_VERSION(1.8)
-
-AC_PROG_CC
-AC_PROG_INSTALL
-
 XORG_DEFAULT_OPTIONS
 
 # Checks for pkg-config packages
 PKG_CHECK_MODULES(XPR, xmuu x11)
-AC_SUBST(XPR_CFLAGS)
-AC_SUBST(XPR_LIBS)
 
 AC_OUTPUT([Makefile])
