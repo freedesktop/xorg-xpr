@@ -1680,7 +1680,7 @@ void x2jet(
 
   read_xwd_data(in);
 
-  Z_pixel_mask = ~(0xFFFFFFFFL << xwd_header.pixmap_depth);
+  Z_pixel_mask = ~(0xFFFFFFFFUL << xwd_header.pixmap_depth);
 
   prepare_color_mapping(invert, paintjet, cutoff, out);
 
