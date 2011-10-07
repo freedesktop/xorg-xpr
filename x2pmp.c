@@ -23,7 +23,7 @@
 /* Local prototypes */
 static unsigned char *magnification_table(int scale);
 static int bits_set(int n);
-static void leave(const char *s);
+static void leave(const char *s) _X_NORETURN;
 static void p_move_abs(FILE *p, int x, int y);
 static void p_save_cursor(FILE *p, int reg);
 static void p_restore_cursor(FILE *p, int reg);

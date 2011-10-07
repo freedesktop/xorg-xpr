@@ -170,7 +170,7 @@ char hex2[]="000000000000000088888888888888884444444444444444cccccccccccccccc\
 
 
 /* Local prototypes */
-static void usage(void);
+static void usage(void) _X_NORETURN;
 static
 void parse_args(
   int argc,
