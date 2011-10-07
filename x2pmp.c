@@ -55,7 +55,7 @@ void x2pmp(FILE *in, FILE *out,
 
     /* Read header from file */
     if (fread((char *)&header, sizeof(header), 1, in) != 1) {
-      if (feof(in)) 
+      if (feof(in))
 	return;
       else
 	leave("fread");
@@ -86,7 +86,7 @@ void x2pmp(FILE *in, FILE *out,
     one_plane_size = byte_width * height;
     buffer_size = one_plane_size *
       ((header.pixmap_format == ZPixmap)? header.pixmap_depth: 1);
-    
+
     /* Determine orientation and scale if not specified */
     if (orient == UNSPECIFIED)
       orient = (fixed_width <= height)? PORTRAIT: LANDSCAPE;
@@ -185,7 +185,7 @@ void x2pmp(FILE *in, FILE *out,
 	unsigned char *tbl = magnification_table(scale);
 	unsigned char *scale_buf;
 	int i, j, k;
-	
+
 	if ((scale_buf = (unsigned char *)
 	     calloc((unsigned) (buffer_size *= scale*scale), sizeof(char)))
 	    == NULL)
@@ -351,10 +351,10 @@ void p_bitmap(
     puthl2(h, p);
     puthl2(w, p);
     puthl3(buflen, p);
-    
+
     while(buflen) {
 	int len;
-	
+
 	len = min(buflen, MAX_VECTOR_LEN);
 	PMP(p, len);
 	(void) fwrite((char *) buf, 1, len, p);
