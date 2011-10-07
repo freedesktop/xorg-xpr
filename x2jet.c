@@ -294,7 +294,7 @@ void set_image_limits (
 
   if ((limit.width != xwd_header.pixmap_width)
       || (limit.height != xwd_header.pixmap_height))
-    fprintf(stderr,(catgets(nlmsg_fd,NL_SETN,1, "%s: Warning: %ld x %ld image clipped to %ld x %ld.\n")),
+    fprintf(stderr,(catgets(nlmsg_fd,NL_SETN,1, "%s: Warning: %d x %d image clipped to %ld x %ld.\n")),
 	    progname,
 	    xwd_header.pixmap_width, xwd_header.pixmap_height,
 	    limit.width, limit.height);
