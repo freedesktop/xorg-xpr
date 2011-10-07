@@ -131,8 +131,8 @@ int debug = 0;
 
 #define DEFAULT_CUTOFF ((unsigned int) (0xFFFF * 0.50))
 
-static char *infilename = NULL;
-char *progname   = NULL;
+static const char *infilename = NULL;
+const char *progname   = NULL;
 
 typedef struct _grayRec {
     int level;
