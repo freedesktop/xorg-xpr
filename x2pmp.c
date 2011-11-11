@@ -11,6 +11,7 @@
 #include <X11/XWDFile.h>
 #include <X11/Xfuncs.h>
 #include <errno.h>
+#include <string.h>
 
 #include "pmp.h"
 #include "xpr.h"
@@ -198,7 +199,7 @@ void x2pmp(FILE *in, FILE *out,
 		unsigned char *dst = ss+j*scale;
 		unsigned char *expansion = tbl+scale*src[j];
 		for(k = 0; k < scale; k++, dst += byte_width*scale) {
-		    bcopy((char *) expansion, (char *) dst, scale);
+		    memmove((char *) dst, (char *) expansion, scale);
 		}
 	    }
 	}

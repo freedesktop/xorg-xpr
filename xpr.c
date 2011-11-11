@@ -77,6 +77,7 @@ from the X Consortium.
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <stdio.h>
+#include <string.h>
 #ifndef WIN32
 #include <pwd.h>
 #endif
@@ -1183,7 +1184,7 @@ void ln03_setup(
 	xm = (((scale * iw) - (i * 30)) / 2) + lm;
 	sprintf(bp, LN_HPA, xm); bp += strlen(bp);
 	sprintf(bp, LN_SGR, 3); bp += strlen(bp);
-	bcopy(header, bp, i);
+	memmove(bp, header, i);
 	bp += i;
     }
     if (trailer != NULL) {
@@ -1192,7 +1193,7 @@ void ln03_setup(
 	xm = (((scale * iw) - (i * 30)) / 2) + lm;
 	sprintf(bp, LN_HPA, xm); bp += strlen(bp);
 	sprintf(bp, LN_SGR, 3); bp += strlen(bp);
-	bcopy(trailer, bp, i);
+	memmove(bp, trailer, i);
 	bp += i;
     }
 
@@ -1740,7 +1741,7 @@ void ps_output_bits(
 
 	ibuf = (unsigned char *)malloc((unsigned)(iwb + 3));
 	for (i=0;i<ih;i++) {
-	    bcopy((char *)buffer, (char *)ibuf, iwb);
+	    memmove((char *)ibuf, (char *)buffer, iwb);
 	    buffer += iwb;
 	    if (!(*(char *) &swaptest))
 		_swaplong((char *)ibuf,(long)iwb);
