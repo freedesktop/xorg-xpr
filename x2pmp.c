@@ -6,7 +6,6 @@
  * IBM 3812 PagePrinter.
  */
 #include <stdio.h>
-#include <math.h>
 #include <X11/Xlib.h>
 #include <X11/XWDFile.h>
 #include <X11/Xfuncs.h>
