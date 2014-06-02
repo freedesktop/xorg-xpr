@@ -465,8 +465,30 @@ int main(int argc, char **argv)
     exit(EXIT_SUCCESS);
 }
 
-static
-void usage(void)
+static void _X_NORETURN _X_COLD
+invalid_arg_value(const char *arg, const char *value)
+{
+    fprintf (stderr, "%s: %s is not a valid value for %s\n\n",
+	     progname, value, arg);
+    usage();
+}
+
+static void _X_NORETURN _X_COLD
+missing_arg(const char *arg)
+{
+    fprintf (stderr, "%s: %s requires an argument\n\n", progname, arg);
+    usage();
+}
+
+static void _X_NORETURN _X_COLD
+unknown_arg(const char *arg)
+{
+    fprintf (stderr, "%s: unrecognized argument %s\n\n", progname, arg);
+    usage();
+}
+
+static void _X_NORETURN _X_COLD
+usage(void)
 {
     fprintf(stderr, "usage: %s [options] [file]\n%s", progname,
 	    "    -append <file>  -noff  -output <file>\n"
@@ -538,6 +560,7 @@ void parse_args(
     *render = 0;
 
     for (argc--, argv++; argc > 0; argc--, argv++) {
+	const char *arg = argv[0];
 	if (argv[0][0] != '-') {
 	    infilename = *argv;
 	    continue;
@@ -547,43 +570,43 @@ void parse_args(
 	case 'a':		/* -append <filename> */
 	    if (!bcmp(*argv, "-append", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		output_filename = *argv;
 		*flags |= F_APPEND;
 	    } else
-		usage();
+		unknown_arg(arg);
 	    break;
 
 	case 'c':		/* -compact | -cutoff <intensity> */
 	    if (len <= 2 )
-		usage();
+		unknown_arg(arg);
 	    if (!bcmp(*argv, "-compact", len)) {
 		*flags |= F_COMPACT;
 	    } else if (!bcmp(*argv, "-cutoff", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		*cutoff = min((atof(*argv) / 100.0 * 0xFFFF), 0xFFFF);
 	    } else
-		usage();
+		unknown_arg(arg);
 	    break;
 
 	case 'd':	/* -density <num> | -device <dev> | -dump */
 	    if (len <= 2)
-		usage();
+		unknown_arg(arg);
 	    if (!bcmp(*argv, "-dump", len)) {
 		*flags |= F_DUMP;
 	    } else if (len <= 3) {
-		usage();
+		unknown_arg(arg);
 	    } else if (!bcmp(*argv, "-density", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		*density = atoi(*argv);
 	    } else if (!bcmp(*argv, "-device", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		len = strlen(*argv);
 		if (len < 2)
-		    usage();
+		    unknown_arg(arg);
 		if (!bcmp(*argv, "ln03", len)) {
 		    *device = LN03;
 		} else if (!bcmp(*argv, "la100", len)) {
@@ -601,22 +624,22 @@ void parse_args(
 		} else if (!bcmp(*argv, "pjetxl", len)) {
 		    *device = PJETXL;
 		} else
-		    usage();
+		    invalid_arg_value(arg, argv[0]);
 	    } else
-		usage();
+		unknown_arg(arg);
 	    break;
 
 	case 'g':		/* -gamma <float> | -gray <num> */
 	    if (len <= 2)
-		usage();
+		unknown_arg(arg);
 	    if (!bcmp(*argv, "-gamma", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		*gamma = atof(*argv);
 	    } else if (!bcmp(*argv, "-gray", len) ||
 		!bcmp(*argv, "-grey", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		switch (atoi(*argv)) {
 		case 2:
 		    *gray = &gray2x2;
@@ -628,44 +651,44 @@ void parse_args(
 		    *gray = &gray4x4;
 		    break;
 		default:
-		    usage();
+		    invalid_arg_value(arg, argv[0]);
 		}
 		*flags |= F_GRAY;
 	    } else
-		usage();
+		unknown_arg(arg);
 	    break;
 
 	case 'h':		/* -height <inches> | -header <string> */
 	    if (len <= 3)
-		usage();
+		unknown_arg(arg);
 	    if (!bcmp(*argv, "-height", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		*height = (int)(300.0 * atof(*argv));
 	    } else if (!bcmp(*argv, "-header", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		*header = *argv;
 	    } else
-		usage();
+		unknown_arg(arg);
 	    break;
 
 	case 'l':		/* -landscape | -left <inches> */
 	    if (len <= 2)
-		usage();
+		unknown_arg(arg);
 	    if (!bcmp(*argv, "-landscape", len)) {
 		*flags |= F_LANDSCAPE;
 	    } else if (!bcmp(*argv, "-left", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		*left = (int)(300.0 * atof(*argv));
 	    } else
-		usage();
+		unknown_arg(arg);
 	    break;
 
 	case 'n':		/* -nosixopt | -noff | -noposition */
 	    if (len <= 3)
-		usage();
+		unknown_arg(arg);
 	    if (!bcmp(*argv, "-nosixopt", len)) {
 		*flags |= F_NOSIXOPT;
 	    } else if (!bcmp(*argv, "-noff", len)) {
@@ -673,93 +696,93 @@ void parse_args(
 	    } else if (!bcmp(*argv, "-noposition", len)) {
 		*flags |= F_NPOSITION;
 	    } else
-		usage();
+		unknown_arg(arg);
 	    break;
 
 	case 'o':		/* -output <filename> */
 	    if (!bcmp(*argv, "-output", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		output_filename = *argv;
 	    } else
-		usage();
+		unknown_arg(arg);
 	    break;
 
 	case 'p':		/* -portrait | -plane <n> */
 	    if (len <= 2)
-		usage();
+		unknown_arg(arg);
 	    if (!bcmp(*argv, "-portrait", len)) {
 		*flags |= F_PORTRAIT;
 	    } else if (!bcmp(*argv, "-plane", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		*plane = atoi(*argv);
 	    } else if (!bcmp(*argv, "-psfig", len)) {
 		*flags |= F_NPOSITION;
 	    } else
-		usage();
+		unknown_arg(arg);
 	    break;
 
 	case 'r':		/* -render <type> | -report | -rv */
 	    if (len <= 2)
-		usage();
+		unknown_arg(arg);
 	    if (!bcmp(*argv, "-rv", len)) {
 		*flags |= F_INVERT;
 	    } else if (len <= 3) {
-		usage();
+		unknown_arg(arg);
 	    } else if (!bcmp(*argv, "-render", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		*render = atoi(*argv);
 	    } else if (!bcmp(*argv, "-report", len)) {
 		*flags |= F_REPORT;
 	    } else
-		usage();
+		unknown_arg(arg);
 	    break;
 
 	case 's':	/* -scale <scale> | -slide | -split <n-pages> */
 	    if (len <= 2)
-		usage();
+		unknown_arg(arg);
 	    if (!bcmp(*argv, "-scale", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		*scale = atoi(*argv);
 	    } else if (!bcmp(*argv, "-slide", len)) {
 		*flags |= F_SLIDE;
 	    } else if (!bcmp(*argv, "-split", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		*split = atoi(*argv);
 	    } else
-		usage();
+		unknown_arg(arg);
 	    break;
 
 	case 't':		/* -top <inches> | -trailer <string> */
 	    if (len <= 2)
-		usage();
+		unknown_arg(arg);
 	    if (!bcmp(*argv, "-top", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		*top = (int)(300.0 * atof(*argv));
 	    } else if (!bcmp(*argv, "-trailer", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		*trailer = *argv;
 	    } else
-		usage();
+		unknown_arg(arg);
 	    break;
 
 	case 'w':		/* -width <inches> */
 	    if (!bcmp(*argv, "-width", len)) {
 		argc--; argv++;
-		if (argc == 0) usage();
+		if (argc == 0) missing_arg(arg);
 		*width = (int)(300.0 * atof(*argv));
 	    } else
-		usage();
+		unknown_arg(arg);
 	    break;
 
 	default:
-	    usage();
+	    unknown_arg(arg);
 	    break;
 	}
     }
