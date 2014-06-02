@@ -70,6 +70,8 @@ xpr \- print an X window dump
 ] [
 .B \-slide
 ] [
+.B \-version
+] [
 .I filename
 ]
 .SH DESCRIPTION
@@ -207,6 +209,8 @@ are available.
 .IP "\fB\-slide\fP"
 This option allows overhead transparencies to be printed
 using the PaintJet and PaintJet XL printers.
+.IP "\fB\-version\fP"
+This option prints the program version information and exits.
 
 .SH SEE ALSO
 xwd(1), xwud(1), X(1)

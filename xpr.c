@@ -71,6 +71,10 @@ from the X Consortium.
  *
  */
 
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
+
 #include <X11/Xos.h>
 #include <X11/Xfuncs.h>
 #include <X11/Xlib.h>
@@ -511,6 +515,7 @@ usage(void)
 	    "    -scale <scale>\n"
 	    "    -slide\n"
 	    "    -split <n-pages>\n"
+	    "    -version\n"
 	);
     exit(EXIT_FAILURE);
 }
@@ -768,6 +773,14 @@ void parse_args(
 		argc--; argv++;
 		if (argc == 0) missing_arg(arg);
 		*trailer = *argv;
+	    } else
+		unknown_arg(arg);
+	    break;
+
+	case 'v':		/* -version */
+	    if (strcmp(*argv, "-version") == 0) {
+		puts(PACKAGE_STRING);
+		exit(0);
 	    } else
 		unknown_arg(arg);
 	    break;
