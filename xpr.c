@@ -468,27 +468,28 @@ int main(int argc, char **argv)
 static
 void usage(void)
 {
-    fprintf(stderr, "usage: %s [options] [file]\n", progname);
-    fprintf(stderr, "    -append <file>  -noff  -output <file>\n");
-    fprintf(stderr, "    -compact\n");
-    fprintf(stderr, "    -device {ln03 | la100 | ps | lw | pp | ljet | pjet | pjetxl}\n");
-    fprintf(stderr, "    -dump\n");
-    fprintf(stderr, "    -gamma <correction>\n");
-    fprintf(stderr, "    -gray {2 | 3 | 4}\n");
-    fprintf(stderr, "    -height <inches>  -width <inches>\n");
-    fprintf(stderr, "    -header <string>  -trailer <string>\n");
-    fprintf(stderr, "    -landscape  -portrait\n");
-    fprintf(stderr, "    -left <inches>  -top <inches>\n");
-    fprintf(stderr, "    -noposition\n");
-    fprintf(stderr, "    -nosixopt\n");
-    fprintf(stderr, "    -plane <n>\n");
-    fprintf(stderr, "    -psfig\n");
-    fprintf(stderr, "    -render <type>\n");
-    fprintf(stderr, "    -report\n");
-    fprintf(stderr, "    -rv\n");
-    fprintf(stderr, "    -scale <scale>\n");
-    fprintf(stderr, "    -slide\n");
-    fprintf(stderr, "    -split <n-pages>\n");
+    fprintf(stderr, "usage: %s [options] [file]\n%s", progname,
+	    "    -append <file>  -noff  -output <file>\n"
+	    "    -compact\n"
+	    "    -device {ln03 | la100 | ps | lw | pp | ljet | pjet | pjetxl}\n"
+	    "    -dump\n"
+	    "    -gamma <correction>\n"
+	    "    -gray {2 | 3 | 4}\n"
+	    "    -height <inches>  -width <inches>\n"
+	    "    -header <string>  -trailer <string>\n"
+	    "    -landscape  -portrait\n"
+	    "    -left <inches>  -top <inches>\n"
+	    "    -noposition\n"
+	    "    -nosixopt\n"
+	    "    -plane <n>\n"
+	    "    -psfig\n"
+	    "    -render <type>\n"
+	    "    -report\n"
+	    "    -rv\n"
+	    "    -scale <scale>\n"
+	    "    -slide\n"
+	    "    -split <n-pages>\n"
+	);
     exit(EXIT_FAILURE);
 }
 
