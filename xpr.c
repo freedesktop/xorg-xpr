@@ -359,7 +359,7 @@ int main(int argc, char **argv)
 	_swaplong((char *) &win, (long)sizeof(win));
 
     if (win.file_version != XWD_FILE_VERSION) {
-	fprintf(stderr,"xpr: file format version missmatch.\n");
+	fprintf(stderr,"xpr: file format version mismatch.\n");
 	exit(1);
     }
     if (win.header_size < sizeof(win)) {
