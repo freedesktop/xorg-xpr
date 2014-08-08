@@ -543,7 +543,6 @@ void parse_args(
 {
     register char *output_filename;
     register int f;
-    register int len;
     register int pos;
 
     output_filename = NULL;
@@ -570,234 +569,133 @@ void parse_args(
 	    infilename = *argv;
 	    continue;
 	}
-	len = strlen(*argv);
-	switch (argv[0][1]) {
-	case 'a':		/* -append <filename> */
-	    if (!bcmp(*argv, "-append", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		output_filename = *argv;
-		*flags |= F_APPEND;
+	if (!strcmp(*argv, "-append")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    output_filename = *argv;
+	    *flags |= F_APPEND;
+	} else if (!strcmp(*argv, "-compact")) {
+	    *flags |= F_COMPACT;
+	} else if (!strcmp(*argv, "-cutoff")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    *cutoff = min((atof(*argv) / 100.0 * 0xFFFF), 0xFFFF);
+	} else if (!strcmp(*argv, "-dump")) {
+	    *flags |= F_DUMP;
+	} else if (!strcmp(*argv, "-density")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    *density = atoi(*argv);
+	} else if (!strcmp(*argv, "-device")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    if (!strcmp(*argv, "ln03")) {
+		*device = LN03;
+	    } else if (!strcmp(*argv, "la100")) {
+		*device = LA100;
+	    } else if (!strcmp(*argv, "ps")) {
+		*device = PS;
+	    } else if (!strcmp(*argv, "lw")) {
+		*device = PS;
+	    } else if (!strcmp(*argv, "pp")) {
+		*device = PP;
+	    } else if (!strcmp(*argv, "ljet")) {
+		*device = LJET;
+	    } else if (!strcmp(*argv, "pjet")) {
+		*device = PJET;
+	    } else if (!strcmp(*argv, "pjetxl")) {
+		*device = PJETXL;
 	    } else
-		unknown_arg(arg);
-	    break;
-
-	case 'c':		/* -compact | -cutoff <intensity> */
-	    if (len <= 2 )
-		unknown_arg(arg);
-	    if (!bcmp(*argv, "-compact", len)) {
-		*flags |= F_COMPACT;
-	    } else if (!bcmp(*argv, "-cutoff", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		*cutoff = min((atof(*argv) / 100.0 * 0xFFFF), 0xFFFF);
-	    } else
-		unknown_arg(arg);
-	    break;
-
-	case 'd':	/* -density <num> | -device <dev> | -dump */
-	    if (len <= 2)
-		unknown_arg(arg);
-	    if (!bcmp(*argv, "-dump", len)) {
-		*flags |= F_DUMP;
-	    } else if (len <= 3) {
-		unknown_arg(arg);
-	    } else if (!bcmp(*argv, "-density", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		*density = atoi(*argv);
-	    } else if (!bcmp(*argv, "-device", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		len = strlen(*argv);
-		if (len < 2)
-		    unknown_arg(arg);
-		if (!bcmp(*argv, "ln03", len)) {
-		    *device = LN03;
-		} else if (!bcmp(*argv, "la100", len)) {
-		    *device = LA100;
-		} else if (!bcmp(*argv, "ps", len)) {
-		    *device = PS;
-		} else if (!bcmp(*argv, "lw", len)) {
-		    *device = PS;
-		} else if (!bcmp(*argv, "pp", len)) {
-		    *device = PP;
-		} else if (!bcmp(*argv, "ljet", len)) {
-		    *device = LJET;
-		} else if (!bcmp(*argv, "pjet", len)) {
-		    *device = PJET;
-		} else if (!bcmp(*argv, "pjetxl", len)) {
-		    *device = PJETXL;
-		} else
-		    invalid_arg_value(arg, argv[0]);
-	    } else
-		unknown_arg(arg);
-	    break;
-
-	case 'g':		/* -gamma <float> | -gray <num> */
-	    if (len <= 2)
-		unknown_arg(arg);
-	    if (!bcmp(*argv, "-gamma", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		*gamma = atof(*argv);
-	    } else if (!bcmp(*argv, "-gray", len) ||
-		!bcmp(*argv, "-grey", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		switch (atoi(*argv)) {
-		case 2:
-		    *gray = &gray2x2;
-		    break;
-		case 3:
-		    *gray = &gray3x3;
-		    break;
-		case 4:
-		    *gray = &gray4x4;
-		    break;
-		default:
-		    invalid_arg_value(arg, argv[0]);
-		}
-		*flags |= F_GRAY;
-	    } else
-		unknown_arg(arg);
-	    break;
-
-	case 'h':		/* -height <inches> | -header <string> */
-	    if (len <= 3)
-		unknown_arg(arg);
-	    if (!bcmp(*argv, "-height", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		*height = (int)(300.0 * atof(*argv));
-	    } else if (!bcmp(*argv, "-header", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		*header = *argv;
-	    } else
-		unknown_arg(arg);
-	    break;
-
-	case 'l':		/* -landscape | -left <inches> */
-	    if (len <= 2)
-		unknown_arg(arg);
-	    if (!bcmp(*argv, "-landscape", len)) {
-		*flags |= F_LANDSCAPE;
-	    } else if (!bcmp(*argv, "-left", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		*left = (int)(300.0 * atof(*argv));
-	    } else
-		unknown_arg(arg);
-	    break;
-
-	case 'n':		/* -nosixopt | -noff | -noposition */
-	    if (len <= 3)
-		unknown_arg(arg);
-	    if (!bcmp(*argv, "-nosixopt", len)) {
-		*flags |= F_NOSIXOPT;
-	    } else if (!bcmp(*argv, "-noff", len)) {
-		*flags |= F_NOFF;
-	    } else if (!bcmp(*argv, "-noposition", len)) {
-		*flags |= F_NPOSITION;
-	    } else
-		unknown_arg(arg);
-	    break;
-
-	case 'o':		/* -output <filename> */
-	    if (!bcmp(*argv, "-output", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		output_filename = *argv;
-	    } else
-		unknown_arg(arg);
-	    break;
-
-	case 'p':		/* -portrait | -plane <n> */
-	    if (len <= 2)
-		unknown_arg(arg);
-	    if (!bcmp(*argv, "-portrait", len)) {
-		*flags |= F_PORTRAIT;
-	    } else if (!bcmp(*argv, "-plane", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		*plane = atoi(*argv);
-	    } else if (!bcmp(*argv, "-psfig", len)) {
-		*flags |= F_NPOSITION;
-	    } else
-		unknown_arg(arg);
-	    break;
-
-	case 'r':		/* -render <type> | -report | -rv */
-	    if (len <= 2)
-		unknown_arg(arg);
-	    if (!bcmp(*argv, "-rv", len)) {
-		*flags |= F_INVERT;
-	    } else if (len <= 3) {
-		unknown_arg(arg);
-	    } else if (!bcmp(*argv, "-render", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		*render = atoi(*argv);
-	    } else if (!bcmp(*argv, "-report", len)) {
-		*flags |= F_REPORT;
-	    } else
-		unknown_arg(arg);
-	    break;
-
-	case 's':	/* -scale <scale> | -slide | -split <n-pages> */
-	    if (len <= 2)
-		unknown_arg(arg);
-	    if (!bcmp(*argv, "-scale", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		*scale = atoi(*argv);
-	    } else if (!bcmp(*argv, "-slide", len)) {
-		*flags |= F_SLIDE;
-	    } else if (!bcmp(*argv, "-split", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		*split = atoi(*argv);
-	    } else
-		unknown_arg(arg);
-	    break;
-
-	case 't':		/* -top <inches> | -trailer <string> */
-	    if (len <= 2)
-		unknown_arg(arg);
-	    if (!bcmp(*argv, "-top", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		*top = (int)(300.0 * atof(*argv));
-	    } else if (!bcmp(*argv, "-trailer", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		*trailer = *argv;
-	    } else
-		unknown_arg(arg);
-	    break;
-
-	case 'v':		/* -version */
-	    if (strcmp(*argv, "-version") == 0) {
-		puts(PACKAGE_STRING);
-		exit(0);
-	    } else
-		unknown_arg(arg);
-	    break;
-
-	case 'w':		/* -width <inches> */
-	    if (!bcmp(*argv, "-width", len)) {
-		argc--; argv++;
-		if (argc == 0) missing_arg(arg);
-		*width = (int)(300.0 * atof(*argv));
-	    } else
-		unknown_arg(arg);
-	    break;
-
-	default:
+		invalid_arg_value(arg, argv[0]);
+	} else if (!strcmp(*argv, "-gamma")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    *gamma = atof(*argv);
+	} else if (!strcmp(*argv, "-gray") ||
+		   !strcmp(*argv, "-grey")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    switch (atoi(*argv)) {
+	      case 2:
+		*gray = &gray2x2;
+		break;
+	      case 3:
+		*gray = &gray3x3;
+		break;
+	      case 4:
+		*gray = &gray4x4;
+		break;
+	      default:
+		invalid_arg_value(arg, argv[0]);
+	    }
+	    *flags |= F_GRAY;
+	} else if (!strcmp(*argv, "-height")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    *height = (int)(300.0 * atof(*argv));
+	} else if (!strcmp(*argv, "-header")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    *header = *argv;
+	} else if (!strcmp(*argv, "-landscape")) {
+	    *flags |= F_LANDSCAPE;
+	} else if (!strcmp(*argv, "-left")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    *left = (int)(300.0 * atof(*argv));
+	} else if (!strcmp(*argv, "-nosixopt")) {
+	    *flags |= F_NOSIXOPT;
+	} else if (!strcmp(*argv, "-noff")) {
+	    *flags |= F_NOFF;
+	} else if (!strcmp(*argv, "-noposition")) {
+	    *flags |= F_NPOSITION;
+	} else if (!strcmp(*argv, "-output")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    output_filename = *argv;
+	} else if (!strcmp(*argv, "-portrait")) {
+	    *flags |= F_PORTRAIT;
+	} else if (!strcmp(*argv, "-plane")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    *plane = atoi(*argv);
+	} else if (!strcmp(*argv, "-psfig")) {
+	    *flags |= F_NPOSITION;
+	} else if (!strcmp(*argv, "-rv")) {
+	    *flags |= F_INVERT;
+	} else if (!strcmp(*argv, "-render")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    *render = atoi(*argv);
+	} else if (!strcmp(*argv, "-report")) {
+	    *flags |= F_REPORT;
+	} else if (!strcmp(*argv, "-scale")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    *scale = atoi(*argv);
+	} else if (!strcmp(*argv, "-slide")) {
+	    *flags |= F_SLIDE;
+	} else if (!strcmp(*argv, "-split")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    *split = atoi(*argv);
+	} else if (!strcmp(*argv, "-top")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    *top = (int)(300.0 * atof(*argv));
+	} else if (!strcmp(*argv, "-trailer")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    *trailer = *argv;
+	} else if (strcmp(*argv, "-version") == 0) {
+	    puts(PACKAGE_STRING);
+	    exit(0);
+	} else if (!strcmp(*argv, "-width")) {
+	    argc--; argv++;
+	    if (argc == 0) missing_arg(arg);
+	    *width = (int)(300.0 * atof(*argv));
+	} else
 	    unknown_arg(arg);
-	    break;
-	}
     }
 
     if (infilename) {
