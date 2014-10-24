@@ -138,17 +138,18 @@ int debug = 0;
 static const char *infilename = NULL;
 const char *progname   = NULL;
 
-typedef struct _grayRec {
+struct _grayRec {
     int level;
     int sizeX, sizeY;		/* 2x2, 3x3, 4x4 */
-    unsigned long *grayscales;	/* pointer to the encoded pixels */
-} GrayRec, *GrayPtr;
+    const unsigned long *grayscales;	/* pointer to the encoded pixels */
+};
+typedef const struct _grayRec GrayRec, *GrayPtr;
 
-static unsigned long grayscale2x2[] =
+static const unsigned long grayscale2x2[] =
 	{0, 1, 9, 11, 15};
-static unsigned long grayscale3x3[] =
+static const unsigned long grayscale3x3[] =
 	{0, 16, 68, 81, 325, 341, 349, 381, 383, 511};
-static unsigned long grayscale4x4[] =
+static const unsigned long grayscale4x4[] =
 	{0, 64, 4160, 4161, 20545, 21057, 23105,
 	 23113, 23145, 24169, 24171, 56939, 55275, 55279,
 	 57327, 65519, 65535};
@@ -1210,7 +1211,7 @@ void dump_prolog(int flags)
 /* postscript "programs" to unpack and print the bitmaps being sent */
 
 static const
-char *ps_prolog_compact[] = {
+char * const ps_prolog_compact[] = {
     "%%Pages: 1",
     "%%EndProlog",
     "%%Page: 1 1",
@@ -1284,7 +1285,7 @@ char *ps_prolog_compact[] = {
 };
 
 static const
-char *ps_prolog[] = {
+char * const ps_prolog[] = {
     "%%Pages: 1",
     "%%EndProlog",
     "%%Page: 1 1",
@@ -1317,7 +1318,8 @@ char *ps_prolog[] = {
 
 static
 void dump_prolog(int flags) {
-    const char **p = (flags & F_COMPACT) ? ps_prolog_compact : ps_prolog;
+    const char * const *p =
+        (flags & F_COMPACT) ? ps_prolog_compact : ps_prolog;
     while (*p)
         printf("%s\n", *p++);
 }
@@ -1470,7 +1472,7 @@ void ps_setup(
 }
 
 static const
-char *ps_epilog[] = {
+char * const ps_epilog[] = {
 	"",
 	"showpage",
 	"%%Trailer",
@@ -1480,7 +1482,7 @@ char *ps_epilog[] = {
 static
 void ps_finish(void)
 {
-	char **p = (char **)ps_epilog;
+	const char * const *p = ps_epilog;
 
 	while (*p) printf("%s\n",*p++);
 }
