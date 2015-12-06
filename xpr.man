@@ -213,7 +213,7 @@ using the PaintJet and PaintJet XL printers.
 This option prints the program version information and exits.
 
 .SH SEE ALSO
-xwd(1), xwud(1), X(1)
+xwd(1), xwud(1), X(__miscmansuffix__)
 .SH LIMITATIONS
 
 The current version of \fIxpr\fP can generally print out on the LN03
@@ -332,7 +332,7 @@ Copyright 1986, Marvin Solomon and the University of Wisconsin.
 .br
 Copyright 1988, Hewlett Packard Company.
 .br
-See \fIX(1)\fP for a full statement of rights and permissions.
+See \fIX(__miscmansuffix__)\fP for a full statement of rights and permissions.
 .SH AUTHORS
 Michael R. Gretzinger, MIT Project Athena,
 Jose Capo, MIT Project Athena (PP3812 support),
